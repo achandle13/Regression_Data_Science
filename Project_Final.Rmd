@@ -1,0 +1,192 @@
+---
+output: html_document
+fontsize: 9pt
+---
+### **Analysis of Transmission Type Impacts on MPG**
+```{r echo=FALSE,warning=FALSE}
+attach(mtcars)
+library(car)
+```
+
+#### **Executive Summary**
+  Manual transmissions have higher miles per gallon; however, quantifying the improved gas performance from manual transmission is more difficult.  This analysis estimates a final model suggesting the impact of manual transmission on miles per gallon is a 4.2995 increase on average. Despite promising diagnostics of the model's performance, the model is incomplete due to excluding known-knowns (cylinders,gears,hp) due to lack of degrees of freedom and correlation among regressors, and includes variables that are confounded in that they represent both driver behavior (driving fast) and automobile efficiency.  
+  
+#### **Description of the Analysis**
+This analysis seeks to answer two questions:
+1.) What transmission type is better for MPG?
+2.) What is the difference on MPG of the two types of transmissions?
+
+##### **Final Model and Findings**
+The final model for this analysis is estimated as: 
+```{r echo=FALSE}
+fit2<-lm(mpg~am+wt+qsec-1)
+summary(fit2)$coefficients
+```
+
+###### **Coefficient Interpretation**
+  Each of the coefficents in the model are statistically different from 0 at the .001 level of significance. From this one infers the coefficients are not 0 with 99.999% certainty.  
+  Because no intercept is included, the coefficients of wt and qsec are interpreted as "given an automatic transmission". Given a weight and quarter mile time, a manual transmission increases mpg by 4.2995 miles per gallon on average; given an automatic transmission, for every 1,000lb increase in the weight of the car, mpg decreases 3.1855 mpg on average; and for every 1 second increase in the quarter mile time, mpg increases 1.5998 mpg on average.  
+
+  The R squared and Adjusted R-squared are `r summary(fit2)$r.squared` and `r summary(fit2)$adj.r.squared`, respecively  Finally, the F-statistic, model DoF's, and Residual DoF's are `r summary(fit2)$fstatistic`, respectively.  The F-Statistic is statistically different from 0 at the .001 level of significance, which suggests at least one of the coefficients is statistically significantly different from 0. With 99.999% certainty, we infer that at least one of the variables in the final model is in the true model.
+
+#### **Exploratory Analysis**
+
+##### **Factor Variables**
+  An exploration of the data shows the variables of MTCARS are a combination of 
+categorical and continuous variables.  The panel plot of histograms (Figures 1-4) in the Appendix shows the distribution of four of the continuous variables being considered for inclusion.  Figure 5 shows the distribution of the dependent variable "Miles per US Gallon of Gas (mpg)".  The mean of mpg is `r mean(mpg)` with a standard deviation of `r sd(mtcars$mpg)`.
+
+##### **Continuous Variables**
+  The correlation matrix shows stong correlation among disp, wt, and drat with 
+mpg; however, there is strong correlation between disp and wt, between drat
+and disp, between hp and wt, and between hp and disp.
+```{r echo=FALSE}
+cor(cbind(mpg,disp,wt,qsec,drat,hp))
+```
+
+##### **Naive Models** 
+  Multiple models were estimated to determine which combination of variables best 
+predicts mpg. These naive models are single factor models. Figures 6 through 10 in "Figures for Naive Models" shows a series of naive models (red lines) using the continuous variables from the data, including a confidence interval (black lines), a prediction interval (green lines), and the actual values (blue circles). 
+
+#### **Variable Selection Strategy**
+  Attempting to include multiple factor variables would eat the model's DoF's away.  So, only transmission type is included in the model since it is central to the questions being answered. From the exploratory analysis, three  of the continuous variables seem of most use based on actual values dispersion, and breadth of confidence and prediction intervals.  These are Displacement, Weight, and Horsepower.
+  Weight has an intuitive connection to miles per gallon, so that variable is included.  Horsepower and Displacement are therefore excluded because of high correlations with Weight.  R's stepwise Variable Selection returned Displacement, Weight, Quarter Mile Time, and Transmission type.  Because of the high correlation, Displacement was nonetheless excluded, and Quarter Mile Time included, despite a relatively low correlation with miles per gallon.
+  The choice to remove the intercept is because of the absurd interpretation it would have, "the average miles per gallon of a car with 0 pounds weight, a 0 second quarter mile time, and an automatic transmission."
+
+#### **Model Uncertainty and Residual Diagnostics**
+  The residual variation of the multivariate model is `r sqrt(sum(resid(fit2)^2/(nrow(mtcars)-2)))`. The mean of the residuals, `r mean(resid(fit2))`, is close to 0 but not 0. This is acceptable given the exclusion of the intercept.
+
+95% confidence intervals surrounding the coefficients are:
+```{r echo=FALSE}
+confint(fit2,level=.95)
+```
+These are interpretted as each estimated coefficient having 95% certainty of being within the upper and lower bounds of their respective confidence intervals.
+
+  ANOVA provides more color surrounding the R-squared and the F-Statistic of three of the compared models:
+```{r echo=FALSE}
+fit<-lm(mpg~am,data=mtcars)
+fit4<-update(fit2,mpg~wt+qsec+am)
+anova(fit, fit2, fit4)
+```
+  With the final (model 2) model, the regressors account for so much more of the variance in 
+the dependent variable than the other models. Looking at the results of the ANOVA table, excluding the intercept was a good decision, given the multivariate model's p-value and F-Statistic performance without an intercept.
+
+**Residual Diagnostics**
+  The Multivariate Model suffers neither from heteroskedasticity, nor serial correlation, according to the results of the Bruce-Pagan and Durbin-Watson Tests, shown below.
+
+```{r echo=FALSE}
+ncvTest(fit2)
+```
+
+```{r echo=FALSE}
+durbinWatsonTest(fit2)
+```
+
+  Figures 11 through 13 show residual plots against the indepedent variables for each model.  Figures 14 and 15 show a comparison of each model's predicted values (blue circles) to the actual values (red circles). This further supports the better performance of the Multivariate model.
+
+#### **Conclusions**
+1.) Question 1:
+  The analysis indicates that across all models, particulary the models where only transmission type was used as factor, and in the final model, a manual transmission type has positive impact on miles per gallon relative to the automatic transmission type.
+2.) Question 2:
+  Quantifying the difference between the two is more difficult because that difference is conditional to the model being estimated.  The Naive model with Transmission Type suggests 7.245 mpg increase on average for manaual transmissions.  The final model suggests, for a given weight and quarter mile time, a manual transmission leads to a 4.2995mpg increase on average.  With 95% certainty, the former could be between 3.6 and 10.85.  With 95% certainty, the latter value could be anywhere between 2.2 and 6.4.
+
+
+#### **Appendix**
+
+```{r echo=FALSE,warning=FALSE,message=FALSE}
+attach(mtcars)
+par(mfrow=c(3,2))
+hist(disp,breaks=10,main="Figure 1: Distribution of the Variable\n Displacement",col="blue",xlab="Displacement (ratio)",xaxt="n")
+axis(side=1,at=seq(50,500,by=50),labels=seq(50,500,by=50))
+hist(qsec,breaks=10,main="Figure 2: Distribution of the Variable\nQuarter Mile Time",col="green",xlab="Quarter Mile Time (in seconds)",xaxt="n")
+axis(side=1,at=seq(14,23,by=1),labels=seq(14,23,by=1))
+hist(wt,breaks=15,main="Figure 3: Distribution of the Variable\n Weight",col="orange",xlab="Weight (1000 lbs)",xaxt="n")
+axis(side=1,at=seq(1.5,5.5,by=.25),labels=seq(1.5,5.5,by=.25))
+hist(drat,breaks=10,main="Figure 4: Distribution of the Variable\nRear Axel Ratio",col="forest green",xlab="Rear Axel Ratio",xaxt="n")
+axis(side=1,at=seq(2.6,5,by=.20),labels=seq(2.6,5,by=.20))
+hist(mpg,breaks=10,main="Figure 5: Distribution of the Dependent Variable\nMiles Per Gallon of Gas",col="red",xlab="Gas (Miles per Gallon)",xaxt="n")
+axis(side=1,at=seq(10,34,by=2),label=seq(10,34,by=2))
+```
+
+```{r echo=FALSE}
+par(mfrow=c(3,2))
+plot(mtcars$disp,mtcars$mpg,frame=FALSE,pch=21,col="blue",main="Figure 6: Analysis of the Relationship\nbetween MPG and Displacement",xlab="Displacement (Cu.in)",ylab="Miles Per Gallon",xlim=c(0,500),ylim=c(0,35))
+fit<-lm(mtcars$mpg~mtcars$disp)
+abline(fit,col="red")
+xvals<-runif(32,min=0,max=500)
+newdata<-data.frame(x=xvals)
+p1<-predict(fit,as.data.frame(newdata),interval="confidence")
+p2<-predict(fit,as.data.frame(newdata),interval="prediction")
+lines(mtcars$disp,p1[,2],col="black")
+lines(mtcars$disp,p1[,3],col="black")
+lines(mtcars$disp,p2[,2],col="forest green")
+lines(mtcars$disp,p2[,3],col="forest green")
+##legend("bottomleft",c("Actual Values","Regression","Confidence Interval","Prediction Interval"),col=c("blue","red","black","forest green"),pch=c(1,NA,NA,NA),lty=c(NA,1,1,1))
+par(new=F)
+plot(mtcars$wt,mtcars$mpg,frame=FALSE,pch=21,col="blue",main="Figure 7: Analysis of the Relationship\nbetween MPG and Weight",xlab="Weight (Half Tons)",ylab="Miles Per Gallon",xlim=c(0,6),ylim=c(0,35))
+fit<-lm(mtcars$mpg~mtcars$wt)
+abline(fit,col="red")
+xvals<-runif(32,min=1,max=6)
+newdata<-data.frame(x=xvals)
+p1<-predict(fit,as.data.frame(newdata),interval="confidence")
+p2<-predict(fit,as.data.frame(newdata),interval="prediction")
+lines(mtcars$wt,p1[,2],col="black")
+lines(mtcars$wt,p1[,3],col="black")
+lines(mtcars$wt,p2[,2],col="forest green")
+lines(mtcars$wt,p2[,3],col="forest green")
+par(new=F)
+plot(mtcars$qsec,mtcars$mpg,frame=FALSE,pch=21,col="blue",main="Figure 8: Analysis of the Relationship\nbetween MPG and Quarter Mile Time",xlab="Time (Seconds)",ylab="Miles Per Gallon",xlim=c(0,25),ylim=c(0,35))
+fit<-lm(mtcars$mpg~mtcars$qsec)
+abline(fit,col="red")
+xvals<-runif(32,min=0,max=25)
+newdata<-data.frame(x=xvals)
+p1<-predict(fit,as.data.frame(newdata),interval="confidence")
+p2<-predict(fit,as.data.frame(newdata),interval="prediction")
+lines(mtcars$qsec,p1[,2],col="black")
+lines(mtcars$qsec,p1[,3],col="black")
+lines(mtcars$qsec,p2[,2],col="forest green")
+lines(mtcars$qsec,p2[,3],col="forest green")
+par(new=F)
+plot(mtcars$drat,mtcars$mpg,frame=FALSE,pch=21,col="blue",main="Figure 9: Analysis of the Relationship\nbetween MPG and Rear Axel Ratio",xlab="Drat (Ratio)",ylab="Miles Per Gallon",xlim=c(0,5),ylim=c(0,35))
+fit<-lm(mtcars$mpg~mtcars$drat)
+abline(fit,col="red")
+xvals<-runif(32,min=0,max=5)
+newdata<-data.frame(x=xvals)
+p1<-predict(fit,as.data.frame(newdata),interval="confidence")
+p2<-predict(fit,as.data.frame(newdata),interval="prediction")
+lines(mtcars$drat,p1[,2],col="black")
+lines(mtcars$drat,p1[,3],col="black")
+lines(mtcars$drat,p2[,2],col="forest green")
+lines(mtcars$drat,p2[,3],col="forest green")
+par(new=F)
+plot(mtcars$hp,mtcars$mpg,frame=FALSE,pch=21,col="blue",main="Figure 10: Analysis of the Relationship\nbetween MPG and Horsepower",xlab="Horsepower (HP)",ylab="Miles Per Gallon",xlim=c(0,350),ylim=c(0,35))
+fit<-lm(mtcars$mpg~mtcars$hp)
+abline(fit,col="red")
+xvals<-runif(32,min=0,max=350)
+newdata<-data.frame(x=xvals)
+p1<-predict(fit,as.data.frame(newdata),interval="confidence")
+p2<-predict(fit,as.data.frame(newdata),interval="prediction")
+lines(mtcars$hp,p1[,2],col="black")
+lines(mtcars$hp,p1[,3],col="black")
+lines(mtcars$hp,p2[,2],col="forest green")
+lines(mtcars$hp,p2[,3],col="forest green")
+```
+
+```{r echo=FALSE}
+par(mfrow=c(3,2))
+plot(am,resid(fit),main="Figure 11: Residual Plot of Naive Model",xlab = "Transmission Type",ylab="Residuals")
+abline(h=0,col="red")
+par(new=F)
+plot(wt,resid(fit2),main="Figure 12: Residual Plots of MV Model\nand Weight",xlab = "Weight (1,000lbs)",ylab="Residuals")
+abline(h=0,col="red")
+par(new=F)
+plot(qsec,resid(fit2),main="Figure 13: Residual Plots of MV Model\nand Quarter Mile Time",xlab = "Quarter Mile Time",ylab="Residuals")
+abline(h=0,col="red")
+par(new=F)
+plot(predict(fit),main="Figure 14: Actual and Predicted Values\nof the Naive Model",ylab="MpG",xlab="Observation",col="red",ylim=c(0,35))
+par(new=T)
+plot(mpg,ylab="",xlab="",col="blue",ylim=c(0,35))
+par(new=F)
+plot(predict(fit2),main="Figure 15: Actual and Predicted\nValues of the MV Model",ylab="MpG",xlab="Observation",col="red",ylim=c(0,35))
+par(new=T)
+plot(mpg,ylab="",xlab="",col="blue",ylim=c(0,35))
+```
